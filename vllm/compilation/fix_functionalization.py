@@ -74,7 +74,7 @@ class FixFunctionalizationPass(VllmInductorPass):
                 mutated_args = {1: 'result'}
                 self.defunctionalize(graph, node, mutated_args)
             # For some reason we need to specify the args for both
-            # silu_and_mul and silu_and_mul_quant. The kwargs
+            # silu_and_mul and silu_and_mul_fp8_quant. The kwargs
             # pathway gets the wrong answer.
             elif at_target == torch.ops._C.silu_and_mul.default:
                 mutated_args = {1: 'result'}
@@ -82,7 +82,7 @@ class FixFunctionalizationPass(VllmInductorPass):
                                      node,
                                      mutated_args,
                                      args=('result', 'input'))
-            elif at_target == torch.ops._C.silu_and_mul_quant.default:
+            elif at_target == torch.ops._C.silu_and_mul_fp8_quant.default:
                 mutated_args = {1: 'result'}
                 self.defunctionalize(graph,
                                      node,

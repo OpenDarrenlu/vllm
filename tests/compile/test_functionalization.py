@@ -31,7 +31,7 @@ RMS_QUANT_OPS = {
 
 SILU_MUL_OP = torch.ops._C.silu_and_mul.default
 
-SILU_MUL_QUANT_OP = torch.ops._C.silu_and_mul_quant.default
+SILU_MUL_FP8_QUANT_OP = torch.ops._C.silu_and_mul_fp8_quant.default
 prompts = [
     "Hello, my name is",
     "The president of the United States is",
@@ -93,7 +93,7 @@ def test_fix_functionalization(model: str, quant_key: QuantKey,
     # and replaced by fused quantized ops in RMS_QUANT_OPS.
     rms_ops = [FUSED_OPS[(quant_key, True)], FUSED_OPS[(quant_key, False)]
                ] if do_fusion else [RMS_OP]
-    silu_mul_ops = [SILU_MUL_QUANT_OP] if do_fusion and \
+    silu_mul_ops = [SILU_MUL_FP8_QUANT_OP] if do_fusion and \
         quant_key == kFp8StaticTensorSym else [
         SILU_MUL_OP
     ]

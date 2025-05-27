@@ -30,7 +30,7 @@ def silu_mul_pattern_static(result: torch.Tensor,
 def silu_mul_replacement_static(result: torch.Tensor,
                                 result_silu_mul: torch.Tensor,
                                 input: torch.Tensor, scale: torch.Tensor):
-    at = auto_functionalized(torch.ops._C.silu_and_mul_quant.default,
+    at = auto_functionalized(torch.ops._C.silu_and_mul_fp8_quant.default,
                              result=result,
                              input=input,
                              scale=scale)

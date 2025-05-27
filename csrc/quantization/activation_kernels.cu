@@ -20,7 +20,7 @@ __device__ __forceinline__ T silu_kernel(const T& x) {
 // Activation and gating kernel template.
 template <typename scalar_t, scalar_t (*ACT_FN)(const scalar_t&),
           typename fp8_type>
-__global__ void act_and_mul_quant_kernel(
+__global__ void act_and_mul_fp8_quant_kernel(
     fp8_type* __restrict__ out,          // [..., d]
     const scalar_t* __restrict__ input,  // [..., 2, d]
     const float* scale, const int d) {
@@ -90,7 +90,7 @@ __global__ void act_and_mul_quant_kernel(
 }  // namespace vllm
 
 // Launch activation, gating, and quantize kernel.
-#define LAUNCH_ACTIVATION_GATE_KERNEL(KERNEL)                               \
+#define LAUNCH_ACTIVATION_GATE_FP8_QUANT_KERNEL(KERNEL)                               \
   int d = input.size(-1) / 2;                                               \
   int64_t num_tokens = input.numel() / input.size(-1);                      \
   dim3 grid(num_tokens, num_tokens > 16 ? num_tokens > 32 ? 1 : 2 : 4);     \
@@ -101,7 +101,7 @@ __global__ void act_and_mul_quant_kernel(
       input.scalar_type(), "act_and_mul_kernel", [&] {                      \
         VLLM_DISPATCH_FP8_TYPES(                                            \
             out.scalar_type(), "fused_add_rms_norm_kernel_fp8_type", [&] {  \
-              vllm::act_and_mul_quant_kernel<scalar_t, KERNEL<scalar_t>,    \
+              vllm::act_and_mul_fp8_quant_kernel<scalar_t, KERNEL<scalar_t>,    \
                                              fp8_t>                         \
                   <<<grid, block, 0, stream>>>(out.data_ptr<fp8_t>(),       \
                                                input.data_ptr<scalar_t>(),  \
@@ -109,13 +109,13 @@ __global__ void act_and_mul_quant_kernel(
             });                                                             \
       });
 
-void silu_and_mul_quant(torch::Tensor& out,    // [..., d]
+void silu_and_mul_fp8_quant(torch::Tensor& out,    // [..., d]
                         torch::Tensor& input,  // [..., 2 * d]
-                        torch::Tensor& scale) {
+                        torch::Tensor const& scale) {
   TORCH_CHECK(out.dtype() == torch::kFloat8_e4m3fn ||
               out.dtype() == torch::kFloat8_e4m3fnuz);
   TORCH_CHECK(input.dtype() == torch::kFloat16 ||
               input.dtype() == torch::kBFloat16);
   TORCH_CHECK(input.size(-1) % 2 == 0);
-  LAUNCH_ACTIVATION_GATE_KERNEL(vllm::silu_kernel);
+  LAUNCH_ACTIVATION_GATE_FP8_QUANT_KERNEL(vllm::silu_kernel);
 }
