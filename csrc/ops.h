@@ -123,7 +123,11 @@ void batched_rotary_embedding(torch::Tensor& positions, torch::Tensor& query,
 void silu_and_mul(torch::Tensor& out, torch::Tensor& input);
 
 void silu_and_mul_fp8_quant(torch::Tensor& out, torch::Tensor& input,
-                        torch::Tensor const& scale);            
+                            torch::Tensor const& scale);
+
+void silu_and_mul_int8_quant(
+    torch::Tensor& out, torch::Tensor& input,
+    torch::Tensor& scale);  // scale is output for Dynamic Int8 Quantization
 
 void mul_and_silu(torch::Tensor& out, torch::Tensor& input);
 
