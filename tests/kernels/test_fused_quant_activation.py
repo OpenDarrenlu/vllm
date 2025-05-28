@@ -29,7 +29,7 @@ def ops_impl(x: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
     out = torch.empty(out_shape,
                       dtype=current_platform.fp8_dtype(),
                       device=x.device)
-    torch.ops._C.silu_and_mul_quant(out, x, scale)
+    torch.ops._C.silu_and_mul_static_fp8_quant(out, x, scale)
     return out
 
 
@@ -67,4 +67,4 @@ def test_silu_and_mul(
     assert ref_out.shape == ops_out.shape
     assert torch.allclose(ref_out.to(dtype=torch.float32),
                           ops_out.to(dtype=torch.float32))
-    opcheck(torch.ops._C.silu_and_mul_quant, (ops_out, x, scale))
+    opcheck(torch.ops._C.silu_and_mul_static_fp8_quant, (ops_out, x, scale))

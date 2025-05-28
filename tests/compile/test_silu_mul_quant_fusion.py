@@ -29,7 +29,7 @@ class TestModel(torch.nn.Module):
 @pytest.mark.parametrize("hidden_size", [64])
 @pytest.mark.skipif(envs.VLLM_TARGET_DEVICE not in ["cuda", "rocm"],
                     reason="Only test on CUDA and ROCm")
-def test_fusion_silu_and_mul_quant(num_tokens, hidden_size):
+def test_fusion_silu_and_mul_static_fp8_quant(num_tokens, hidden_size):
     torch.set_default_device("cuda")
     torch.set_default_dtype(torch.float16)
 
@@ -61,13 +61,13 @@ def test_fusion_silu_and_mul_quant(num_tokens, hidden_size):
     pre_nodes = backend.graph_pre_pass.nodes
     post_nodes = backend.graph_post_pass.nodes
 
-    silu_and_mul_quant = torch.ops._C.silu_and_mul_quant.default
+    silu_and_mul_static_fp8_quant = torch.ops._C.silu_and_mul_static_fp8_quant.default
     fp8_quant = torch.ops._C.static_scaled_fp8_quant.default
 
     # In pre-nodes, fp8 quant should be present and fused kernels should not
-    assert find_auto_fn_maybe(pre_nodes, silu_and_mul_quant) is None
+    assert find_auto_fn_maybe(pre_nodes, silu_and_mul_static_fp8_quant) is None
     find_auto_fn(pre_nodes, fp8_quant)
 
     # In post-nodes, fused kernels should be present and fp8 quant should not
-    find_auto_fn(post_nodes, silu_and_mul_quant)
+    find_auto_fn(post_nodes, silu_and_mul_static_fp8_quant)
     assert find_auto_fn_maybe(post_nodes, fp8_quant) is None

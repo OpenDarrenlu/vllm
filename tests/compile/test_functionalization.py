@@ -31,7 +31,7 @@ RMS_QUANT_OPS = {
 
 SILU_MUL_OP = torch.ops._C.silu_and_mul.default
 
-SILU_MUL_QUANT_OP = torch.ops._C.silu_and_mul_quant.default
+SILU_MUL_QUANT_OP = torch.ops._C.silu_and_mul_static_fp8_quant.default
 prompts = [
     "Hello, my name is",
     "The president of the United States is",
