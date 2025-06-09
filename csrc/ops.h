@@ -123,7 +123,10 @@ void batched_rotary_embedding(torch::Tensor& positions, torch::Tensor& query,
 void silu_and_mul(torch::Tensor& out, torch::Tensor& input);
 
 void silu_and_mul_static_fp8_quant(torch::Tensor& out, torch::Tensor& input,
-                        torch::Tensor& scale);
+                                   torch::Tensor& scale);
+
+void silu_and_mul_dynamic_fp8_quant(torch::Tensor& out, torch::Tensor& input,
+                                   torch::Tensor& scale, bool use_per_token_if_dynamic);
 
 void mul_and_silu(torch::Tensor& out, torch::Tensor& input);
 

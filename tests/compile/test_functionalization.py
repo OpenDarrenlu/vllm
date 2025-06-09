@@ -8,7 +8,7 @@ from vllm import LLM, SamplingParams
 from vllm.compilation.activation_quant_fusion import ActivationQuantFusionPass
 from vllm.compilation.fix_functionalization import FixFunctionalizationPass
 from vllm.compilation.fusion import (FUSED_OPS, FusionPass, QuantKey,
-                                     kFp8DynamicTokenSym, kFp8StaticTensorSym)
+                                     kFp8DynamicTokenSym, kFp8StaticTensorSym, kFp8DynamicTensorSym)
 from vllm.compilation.fx_utils import find_auto_fn, find_auto_fn_maybe, is_func
 from vllm.compilation.noop_elimination import NoOpEliminationPass
 from vllm.config import CompilationConfig, PassConfig, VllmConfig
@@ -31,7 +31,8 @@ RMS_QUANT_OPS = {
 
 SILU_MUL_OP = torch.ops._C.silu_and_mul.default
 
-SILU_MUL_QUANT_OP = torch.ops._C.silu_and_mul_static_fp8_quant.default
+SILU_MUL_STATIC_FP8_QUANT_OP = torch.ops._C.silu_and_mul_static_fp8_quant.default
+SILU_MUL_DYNAMIC_FP8_QUANT_OP = torch.ops._C.silu_and_mul_dynamic_fp8_quant.default
 prompts = [
     "Hello, my name is",
     "The president of the United States is",
@@ -44,7 +45,7 @@ prompts = [
     "model, quant_key",
     [("nm-testing/TinyLlama-1.1B-Chat-v1.0-FP8-e2e", kFp8StaticTensorSym),
      ("nm-testing/TinyLlama-1.1B-Chat-v1.0-FP8_DYNAMIC-e2e",
-      kFp8DynamicTokenSym)])
+      kFp8DynamicTensorSym)])
 @pytest.mark.parametrize("do_fusion", [True, False])
 @pytest.mark.skipif(envs.VLLM_TARGET_DEVICE != "cuda",
                     reason="Only test on CUDA")
@@ -93,10 +94,17 @@ def test_fix_functionalization(model: str, quant_key: QuantKey,
     # and replaced by fused quantized ops in RMS_QUANT_OPS.
     rms_ops = [FUSED_OPS[(quant_key, True)], FUSED_OPS[(quant_key, False)]
                ] if do_fusion else [RMS_OP]
-    silu_mul_ops = [SILU_MUL_QUANT_OP] if do_fusion and \
-        quant_key == kFp8StaticTensorSym else [
-        SILU_MUL_OP
-    ]
+    
+    if do_fusion:
+        if quant_key == kFp8StaticTensorSym:
+            silu_mul_ops = [SILU_MUL_STATIC_FP8_QUANT_OP]
+        elif quant_key == kFp8DynamicTensorSym:
+            silu_mul_ops = [SILU_MUL_DYNAMIC_FP8_QUANT_OP]
+        else:
+            # error: not support this quantization key
+            raise ValueError(f"Unsupported quantization key: {quant_key}")
+    else:
+        silu_mul_ops = [SILU_MUL_OP] 
 
     ops = OPS_IN_MODEL + rms_ops + silu_mul_ops
 
