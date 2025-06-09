@@ -96,7 +96,6 @@ __global__ void act_and_mul_dynamic_per_token_fp8_quant_kernel(
     fp8_type* __restrict__ out,          // [..., d]
     const scalar_t* __restrict__ input,  // [..., 2, d]
     float* scale, const int d) {
-
   const int32_t elems_per_128bit_load = (128 / 8) / sizeof(scalar_t);
 
   // We don't expect the hidden dimension to exceed 32 bits so int32 should
@@ -120,7 +119,7 @@ __global__ void act_and_mul_dynamic_per_token_fp8_quant_kernel(
   const int4* __restrict__ x_128bit_ptr = reinterpret_cast<const int4*>(x_ptr);
   const int4* __restrict__ y_128bit_ptr = reinterpret_cast<const int4*>(y_ptr);
   int2* __restrict__ out_128bit_ptr = reinterpret_cast<int2*>(out_ptr);
-  
+
   float inverted_scale = 1 / 0.0016318271844419751;
   float tmp_max = 0.0f;
 #pragma unroll
@@ -146,8 +145,7 @@ __global__ void act_and_mul_dynamic_per_token_fp8_quant_kernel(
 
   // Scalar cleanup code
   if (d > vec_loop_end) {
-    for (int64_t idx = vec_loop_end + threadIdx.x; idx < d;
-         idx += blockDim.x) {
+    for (int64_t idx = vec_loop_end + threadIdx.x; idx < d; idx += blockDim.x) {
       const scalar_t x = VLLM_LDG(&x_ptr[idx]);
       const scalar_t y = VLLM_LDG(&y_ptr[idx]);
       out_ptr[idx] =
@@ -159,7 +157,7 @@ __global__ void act_and_mul_dynamic_per_token_fp8_quant_kernel(
 }  // namespace vllm
 
 // Launch activation, gating, and quantize kernel.
-#define LAUNCH_ACTIVATION_GATE_STATIC_FP8_QUANT_KERNEL(KERNEL)                               \
+#define LAUNCH_ACTIVATION_GATE_STATIC_FP8_QUANT_KERNEL(KERNEL)              \
   int d = input.size(-1) / 2;                                               \
   int64_t num_tokens = input.numel() / input.size(-1);                      \
   dim3 grid(num_tokens, num_tokens > 16 ? num_tokens > 32 ? 1 : 2 : 4);     \
@@ -167,9 +165,11 @@ __global__ void act_and_mul_dynamic_per_token_fp8_quant_kernel(
   const at::cuda::OptionalCUDAGuard device_guard(device_of(input));         \
   const cudaStream_t stream = at::cuda::getCurrentCUDAStream();             \
   VLLM_DISPATCH_FLOATING_TYPES(                                             \
-      input.scalar_type(), "fused_silu_and_mul_quant_kernel_scalar_type", [&] {                      \
+      input.scalar_type(), "fused_silu_and_mul_quant_kernel_scalar_type",   \
+      [&] {                                                                 \
         VLLM_DISPATCH_FP8_TYPES(                                            \
-            out.scalar_type(), "fused_silu_and_mul_quant_kernel_fp8_type", [&] {  \
+            out.scalar_type(), "fused_silu_and_mul_quant_kernel_fp8_type",  \
+            [&] {                                                           \
               vllm::act_and_mul_static_fp8_quant_kernel<                    \
                   scalar_t, KERNEL<scalar_t>, fp8_t>                        \
                   <<<grid, block, 0, stream>>>(out.data_ptr<fp8_t>(),       \
@@ -199,10 +199,12 @@ void silu_and_mul_static_fp8_quant(torch::Tensor& out,    // [..., d]
   const at::cuda::OptionalCUDAGuard device_guard(device_of(input));         \
   const cudaStream_t stream = at::cuda::getCurrentCUDAStream();             \
   VLLM_DISPATCH_FLOATING_TYPES(                                             \
-      input.scalar_type(), "fused_silu_and_mul_quant_kernel_scalar_type", [&] {                      \
+      input.scalar_type(), "fused_silu_and_mul_quant_kernel_scalar_type",   \
+      [&] {                                                                 \
         VLLM_DISPATCH_FP8_TYPES(                                            \
-            out.scalar_type(), "fused_silu_and_mul_quant_kernel_fp8_type", [&] {  \
-              vllm::act_and_mul_dynamic_per_token_fp8_quant_kernel<                    \
+            out.scalar_type(), "fused_silu_and_mul_quant_kernel_fp8_type",  \
+            [&] {                                                           \
+              vllm::act_and_mul_dynamic_per_token_fp8_quant_kernel<         \
                   scalar_t, KERNEL<scalar_t>, fp8_t>                        \
                   <<<grid, block, 0, stream>>>(out.data_ptr<fp8_t>(),       \
                                                input.data_ptr<scalar_t>(),  \
@@ -210,12 +212,14 @@ void silu_and_mul_static_fp8_quant(torch::Tensor& out,    // [..., d]
             });                                                             \
       });
 
-void silu_and_mul_dynamic_fp8_quant(torch::Tensor& out,   // [..., d]
-                                   torch::Tensor& input,  // [..., 2 * d]
-                                   torch::Tensor& scale,  // [1]-per_tensor or [num_tokens]-per_token
-                                   bool use_per_token_if_dynamic) {
+void silu_and_mul_dynamic_fp8_quant(
+    torch::Tensor& out,    // [..., d]
+    torch::Tensor& input,  // [..., 2 * d]
+    torch::Tensor& scale,  // [1]-per_tensor or [num_tokens]-per_token
+    bool use_per_token_if_dynamic) {
   TORCH_CHECK(use_per_token_if_dynamic == true,
-              "silu_and_mul_dynamic_fp8_quant kernel is only supported for per-token quant now.");
+              "silu_and_mul_dynamic_fp8_quant kernel is only supported for "
+              "per-token quant now.");
   TORCH_CHECK(out.dtype() == torch::kFloat8_e4m3fn ||
               out.dtype() == torch::kFloat8_e4m3fnuz);
   TORCH_CHECK(input.dtype() == torch::kFloat16 ||

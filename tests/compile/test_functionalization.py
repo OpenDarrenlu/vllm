@@ -8,7 +8,7 @@ from vllm import LLM, SamplingParams
 from vllm.compilation.activation_quant_fusion import ActivationQuantFusionPass
 from vllm.compilation.fix_functionalization import FixFunctionalizationPass
 from vllm.compilation.fusion import (FUSED_OPS, FusionPass, QuantKey,
-                                     kFp8DynamicTokenSym, kFp8StaticTensorSym, kFp8DynamicTensorSym)
+                                     kFp8DynamicTensorSym, kFp8StaticTensorSym)
 from vllm.compilation.fx_utils import find_auto_fn, find_auto_fn_maybe, is_func
 from vllm.compilation.noop_elimination import NoOpEliminationPass
 from vllm.config import CompilationConfig, PassConfig, VllmConfig
@@ -94,7 +94,7 @@ def test_fix_functionalization(model: str, quant_key: QuantKey,
     # and replaced by fused quantized ops in RMS_QUANT_OPS.
     rms_ops = [FUSED_OPS[(quant_key, True)], FUSED_OPS[(quant_key, False)]
                ] if do_fusion else [RMS_OP]
-    
+
     if do_fusion:
         if quant_key == kFp8StaticTensorSym:
             silu_mul_ops = [SILU_MUL_STATIC_FP8_QUANT_OP]
@@ -104,7 +104,7 @@ def test_fix_functionalization(model: str, quant_key: QuantKey,
             # error: not support this quantization key
             raise ValueError(f"Unsupported quantization key: {quant_key}")
     else:
-        silu_mul_ops = [SILU_MUL_OP] 
+        silu_mul_ops = [SILU_MUL_OP]
 
     ops = OPS_IN_MODEL + rms_ops + silu_mul_ops
 

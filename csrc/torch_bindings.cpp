@@ -112,7 +112,7 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
       "scale) -> ()");
   ops.impl("silu_and_mul_static_fp8_quant", torch::kCUDA,
            &silu_and_mul_static_fp8_quant);
-           
+
   ops.def(
       "silu_and_mul_dynamic_fp8_quant(Tensor! result, Tensor input, Tensor! "
       "scale, bool use_per_token_if_dynamic) -> ()");
